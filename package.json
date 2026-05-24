@@ -9,6 +9,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "cheerio": "latest",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest"
