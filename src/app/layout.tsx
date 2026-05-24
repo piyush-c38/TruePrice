@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "TruePrice",
-  description: "Analyze the true effective cost of Amazon and Flipkart deals.",
+  description: "Analyze the true effective cost of Flipkart deals.",
 };
 
 export default function RootLayout({

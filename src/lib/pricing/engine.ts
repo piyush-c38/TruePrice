@@ -12,6 +12,7 @@ type PricingInput = {
   offers: Offer[];
   userContext?: UserContext;
   sourceUrl?: string;
+  platform?: "flipkart";
 };
 
 /**
@@ -51,7 +52,7 @@ export async function computeBestOffer(input: PricingInput) {
   const explanation = buildExplanation(best.combo, best.pricing);
 
   const analysis: Partial<AnalysisResult> = {
-    platform: input.product ? "amazon" : ("flipkart" as any), // will be filled by caller normally
+    platform: input.platform ?? "flipkart",
     product,
     offers,
     eligibility,
@@ -105,14 +106,15 @@ function matchBankSimple(offerBank: string | null, userBank: string | null) {
 
 function generateAllowedCombos(offers: Offer[]) {
   const results: Offer[][] = [];
-  const n = offers.length;
+  const relevantOffers = offers.filter(isPricingRelevantOffer);
+  const n = relevantOffers.length;
   const maxComboSize = Math.min(4, n);
 
   // power set limited
   const total = 1 << n;
   for (let mask = 1; mask < total; mask++) {
     const combo: Offer[] = [];
-    for (let i = 0; i < n; i++) if (mask & (1 << i)) combo.push(offers[i]);
+    for (let i = 0; i < n; i++) if (mask & (1 << i)) combo.push(relevantOffers[i]);
     if (combo.length === 0 || combo.length > maxComboSize) continue;
 
     // if any non-stackable present, only allow size 1
@@ -132,6 +134,15 @@ function generateAllowedCombos(offers: Offer[]) {
   // also include empty combo (no offers)
   results.push([]);
   return results;
+}
+
+function isPricingRelevantOffer(offer: Offer): boolean {
+  return (
+    offer.type === "bank_discount" ||
+    offer.type === "coupon" ||
+    offer.type === "emi" ||
+    offer.type === "cashback"
+  );
 }
 
 /* ----------------- Pricing evaluation ----------------- */
@@ -169,11 +180,16 @@ function evaluateCombo(combo: Offer[], product: ProductInfo, userContext?: UserC
       continue;
     }
 
+    if (o.type === "bank_discount" || o.type === "coupon") {
+      const amount = computeOfferDiscountAmount(o, base);
+      if (o.type === "coupon") couponDiscount += amount;
+      else bankDiscount += amount;
+      continue;
+    }
+
     // compute discount amount (flat or percentage)
     const amount = computeOfferDiscountAmount(o, base);
-    if (o.type === "coupon") couponDiscount += amount;
-    else if (o.type === "bank_discount") bankDiscount += amount;
-    else if (o.type === "emi") {
+    if (o.type === "emi") {
       // treat EMI discount as instant reduction if present
       instantDiscount += amount;
       // emi extra cost: if user chose EMI and offer not no-cost -> approximate small fee
@@ -181,9 +197,6 @@ function evaluateCombo(combo: Offer[], product: ProductInfo, userContext?: UserC
       if (!noCost && (userContext?.paymentMethod === "emi" || o.requiresEmi)) {
         emiExtraCost += Math.round(base * 0.02); // simple 2% extra approximation for non no-cost EMI
       }
-    } else {
-      // other/flat offers treated as instant
-      instantDiscount += amount;
     }
   }
 

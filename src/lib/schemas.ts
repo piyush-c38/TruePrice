@@ -1,4 +1,4 @@
-export type Platform = "amazon" | "flipkart";
+export type Platform = "flipkart";
 
 export type OfferType =
   | "bank_discount"
