@@ -45,6 +45,10 @@ type AnalysisResponse = {
       isEligible: boolean;
       reason?: string | null;
     }>;
+    metadata?: {
+      explanationSource?: "deterministic" | "llm";
+      llmModel?: string | null;
+    };
     verdict: {
       score: number;
       label: string;
@@ -238,6 +242,13 @@ export default function HomePage() {
             <p className="mt-2 text-sm leading-6 text-slate-300">
               {result ? result.pricingAnalysis.explanation : "Submit a Flipkart URL to inspect the extracted price, offers, and effective cost."}
             </p>
+            {result?.pricingAnalysis.metadata?.explanationSource ? (
+              <p className="mt-3 text-xs uppercase tracking-[0.2em] text-cyan-200">
+                {result.pricingAnalysis.metadata.explanationSource === "llm"
+                  ? `AI explanation${result.pricingAnalysis.metadata.llmModel ? ` · ${result.pricingAnalysis.metadata.llmModel}` : ""}`
+                  : "Deterministic explanation"}
+              </p>
+            ) : null}
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <StatCard label="Base price" value={formatCurrency(pricing?.basePrice)} />

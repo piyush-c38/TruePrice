@@ -83,5 +83,7 @@ export interface AnalysisResult {
     fetchedAt: string; // ISO timestamp
     pageTitle?: string | null;
     extractorVersion?: string | null;
+    explanationSource?: "deterministic" | "llm";
+    llmModel?: string | null;
   };
 }

@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { flipkartExtractor } from "@/lib/extractors";
+import { generateDealExplanation } from "@/lib/llm/explainer";
 import { computeBestOffer } from "@/lib/pricing/engine";
 import type { UserContext } from "@/lib/schemas";
 import { fetchHtmlWithPlaywright } from "@/lib/fetchers/playwrightFetch";
@@ -44,6 +45,26 @@ export async function POST(req: NextRequest) {
             sourceUrl: body.url,
             platform: extracted.platform,
         });
+
+        const explanationResult = await generateDealExplanation({
+            sourceUrl: body.url,
+            product: extracted.product,
+            pricing: pricingAnalysis.pricing!,
+            bestOffers: extracted.offers.filter((offer) => pricingAnalysis.bestOfferIds?.includes(offer.id)),
+            eligibility: pricingAnalysis.eligibility ?? [],
+            userContext: body.userContext,
+            fallbackExplanation: pricingAnalysis.explanation ?? "",
+        });
+
+        pricingAnalysis.explanation = explanationResult.text;
+        pricingAnalysis.metadata = {
+            sourceUrl: pricingAnalysis.metadata?.sourceUrl ?? body.url,
+            fetchedAt: pricingAnalysis.metadata?.fetchedAt ?? new Date().toISOString(),
+            pageTitle: pricingAnalysis.metadata?.pageTitle ?? extracted.pageTitle ?? null,
+            extractorVersion: pricingAnalysis.metadata?.extractorVersion ?? extracted.extractorVersion ?? null,
+            explanationSource: explanationResult.source,
+            llmModel: explanationResult.model,
+        };
 
         // Merge and return a single Analysis-like response
         const result = {
